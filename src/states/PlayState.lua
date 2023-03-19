@@ -175,6 +175,7 @@ function PlayState:update(dt)
     end
 
     Timer.update(dt)
+    self.board:update(dt)
 end
 
 --[[
