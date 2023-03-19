@@ -195,10 +195,14 @@ function PlayState:calculateMatches()
 
         -- add score for each match
         for k, match in pairs(matches) do
-            self.score = self.score + #match * 50
+            -- add score per tile to allow variety consideration
+            for l, tile in pairs(match) do
+                -- score will be 50 * variety
+                self.score = self.score + 50 * tile.variety
 
-            -- for each tile add 1 second
-            self.timer = self.timer + 1 * #match
+                -- for each tile add 1 second
+                self.timer = self.timer + 1
+            end
         end
 
         -- remove any tiles that matched from the board, making empty spaces
