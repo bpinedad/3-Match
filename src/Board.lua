@@ -34,16 +34,104 @@ function Board:initializeTiles()
             
             -- create a new tile at X,Y with a random color and variety
             -- varieties are added as level increases
-            table.insert(self.tiles[tileY], Tile(tileX, tileY, math.random(18), math.random(math.min(self.level, 6))))
+            table.insert(self.tiles[tileY], Tile(tileX, tileY, math.random(math.min(7 + self.level, 15)), math.random(math.min(self.level, 6))))
         end
     end
 
-    while self:calculateMatches() do
+    while self:calculateMatches() or (not self:matchesExist()) do
+    --while self:calculateMatches() do
         
         -- recursively initialize if matches were returned so we always have
         -- a matchless board on start
         self:initializeTiles()
     end
+end
+
+
+-- Function to verify that at least one match exists on current board
+function Board:matchesExist()
+    -- Iterate over all board, test every move and determine if any match exist
+    for y = 1, 8 do        
+        -- every horizontal tile
+        for x = 1, 8 do
+
+            --Test moving up
+            if y > 1 then
+                local tmpTile = self.tiles[y][x]
+                self.tiles[y][x] = self.tiles[y-1][x]
+                self.tiles[y-1][x] = tmpTile
+                if self:calculateMatches() then
+                    self.matches = {}
+                    -- Return them to original
+                    self.tiles[y-1][x] = self.tiles[y][x]
+                    self.tiles[y][x] = tmpTile
+                    return true     
+                else
+                    -- Return them to original
+                    self.tiles[y-1][x] = self.tiles[y][x]
+                    self.tiles[y][x] = tmpTile
+                end
+            end
+            
+            --Test moving down
+            if y < 8 then
+                local tmpTile = self.tiles[y][x]
+                self.tiles[y][x] = self.tiles[y+1][x]
+                self.tiles[y+1][x] = tmpTile
+                if self:calculateMatches() then
+                    self.matches = {}
+                    -- Return them to original
+                    self.tiles[y+1][x] = self.tiles[y][x]
+                    self.tiles[y][x] = tmpTile
+                    return true
+                else
+                    -- Return them to original
+                    self.tiles[y+1][x] = self.tiles[y][x]
+                    self.tiles[y][x] = tmpTile
+                end
+            end
+            
+
+            --Test moving left
+            if x > 1 then
+                local tmpTile = self.tiles[y][x]
+                self.tiles[y][x] = self.tiles[y][x-1]
+                self.tiles[y][x-1] = tmpTile
+                if self:calculateMatches() then
+                    self.matches = {}
+                    -- Return them to original
+                    self.tiles[y][x-1] = self.tiles[y][x]
+                    self.tiles[y][x] = tmpTile
+                    return true
+                else 
+                    -- Return them to original
+                    self.tiles[y][x-1] = self.tiles[y][x]
+                    self.tiles[y][x] = tmpTile
+                end
+            end
+
+            --Test moving right
+            if x < 8 then
+                local tmpTile = self.tiles[y][x]
+                self.tiles[y][x] = self.tiles[y][x+1]
+                self.tiles[y][x+1] = tmpTile
+                if self:calculateMatches() then
+                    self.matches = {}
+                    -- Return them to original
+                    self.tiles[y][x+1] = self.tiles[y][x]
+                    self.tiles[y][x] = tmpTile
+                    return true
+                else
+                    -- Return them to original
+                    self.tiles[y][x+1] = self.tiles[y][x]
+                    self.tiles[y][x] = tmpTile
+                end
+            end
+        end
+    end
+
+    -- If never found a match, return false
+    return false
 end
 
 --[[
@@ -294,7 +382,7 @@ function Board:getFallingTiles()
 
                 -- new tile with random color and variety
                 -- variety limited by level
-                local tile = Tile(x, y, math.random(18), math.random(math.min(self.level, 6)))
+                local tile = Tile(x, y, math.random(math.min(7 + self.level, 15)), math.random(math.min(self.level, 6)))
                 tile.y = -32
                 self.tiles[y][x] = tile
 

@@ -22,6 +22,7 @@ function PlayState:init()
     
     -- start our transition alpha at full, so we fade in
     self.transitionAlpha = 1
+    self.levelLabelY = -64
 
     -- position in the grid which we're highlighting
     self.boardHighlightX = 0
@@ -141,12 +142,10 @@ function PlayState:update(dt)
             elseif math.abs(self.highlightedTile.gridX - x) + math.abs(self.highlightedTile.gridY - y) > 1 then
                 gSounds['error']:play()
                 self.highlightedTile = nil
-            else
-                
+            else            
                 -- swap grid positions of tiles
                 local tempX = self.highlightedTile.gridX
                 local tempY = self.highlightedTile.gridY
-
                 local newTile = self.board.tiles[y][x]
 
                 self.highlightedTile.gridX = newTile.gridX
@@ -154,6 +153,7 @@ function PlayState:update(dt)
                 newTile.gridX = tempX
                 newTile.gridY = tempY
 
+                -- Apply change to table
                 -- swap tiles in the tiles table
                 self.board.tiles[self.highlightedTile.gridY][self.highlightedTile.gridX] =
                     self.highlightedTile
@@ -168,7 +168,33 @@ function PlayState:update(dt)
                 
                 -- once the swap is finished, we can tween falling blocks as needed
                 :finish(function()
-                    self:calculateMatches()
+                    -- Added return bool to determine if a match was found
+                    if not self:calculateMatches() then
+                        gSounds['error']:play()
+                        -- If no matches, rever previous tiles
+                        -- swap grid positions of tiles back to their originals with same method as before
+                        local tempX = self.highlightedTile.gridX
+                        local tempY = self.highlightedTile.gridY
+
+                        self.highlightedTile.gridX = newTile.gridX
+                        self.highlightedTile.gridY = newTile.gridY
+                        newTile.gridX = tempX
+                        newTile.gridY = tempY
+
+                        -- Apply change to table
+                        -- swap tiles in the tiles table
+                        self.board.tiles[self.highlightedTile.gridY][self.highlightedTile.gridX] =
+                            self.highlightedTile
+
+                        self.board.tiles[newTile.gridY][newTile.gridX] = newTile
+
+                        -- tween coordinates between the two so they swap
+                        Timer.tween(0.1, {
+                            [self.highlightedTile] = {x = newTile.x, y = newTile.y},
+                            [newTile] = {x = self.highlightedTile.x, y = self.highlightedTile.y}
+                        })
+                    end
+                    self.highlightedTile = nil
                 end)
             end
         end
@@ -185,8 +211,6 @@ end
     to the Board class.
 ]]
 function PlayState:calculateMatches()
-    self.highlightedTile = nil
-
     -- if we have any matches, remove them and tween the falling blocks that result
     local matches = self.board:calculateMatches()
     
@@ -220,10 +244,36 @@ function PlayState:calculateMatches()
             -- as a result of falling blocks once new blocks have finished falling
             self:calculateMatches()
         end)
-    
+
+        -- Verify if board has at least on match
+        if not self.board:matchesExist() then
+            self.levelLabelY = -64
+            -- Notify no matches
+            Timer.tween(0.25, {
+                [self] = {levelLabelY = VIRTUAL_HEIGHT / 2 - 8}
+            })
+            
+            -- after that, pause for one second with Timer.after
+            :finish(function()
+                Timer.after(1, function()
+                    
+                    -- then, animate the label going down past the bottom edge
+                    Timer.tween(0.25, {
+                        [self] = {levelLabelY = VIRTUAL_HEIGHT + 30}
+                    })
+                    
+                    -- once that's complete, we're ready to play!
+                    :finish(function()
+                        self.board:initializeTiles()
+                    end)
+                end)
+            end)            
+        end
+        return true
     -- if no matches, we can continue playing
     else
         self.canInput = true
+        return false
     end
 end
 
@@ -256,6 +306,14 @@ function PlayState:render()
     love.graphics.setLineWidth(4)
     love.graphics.rectangle('line', self.boardHighlightX * 32 + (VIRTUAL_WIDTH - 272),
         self.boardHighlightY * 32 + 16, 32, 32, 4)
+
+    -- render no moves label
+    love.graphics.setColor(95/255, 205/255, 228/255, 200/255)
+    love.graphics.rectangle('fill', 0, self.levelLabelY - 8, VIRTUAL_WIDTH, 48)
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setFont(gFonts['large'])
+    love.graphics.printf('No more moves!',
+        0, self.levelLabelY, VIRTUAL_WIDTH, 'center')
 
     -- GUI text
     love.graphics.setColor(56/255, 56/255, 56/255, 234/255)

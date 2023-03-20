@@ -20,7 +20,6 @@ function GenerateTileQuads(atlas)
 
     local x = 0
     local y = 0
-
     local counter = 1
 
     -- 9 rows of tiles
